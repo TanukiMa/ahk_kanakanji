@@ -1,4 +1,4 @@
-; kanakanji.ahk - IME自動変換スクリプト（Microsoft IME最適化版 - 入力速度調整）
+; kanakanji.ahk - IME自動変換スクリプト（Microsoft IME最適化版 - 入力完了確認）
 ; 同一Notepadウィンドウを使い回して効率的に処理
 #NoEnv
 #SingleInstance Force
@@ -12,7 +12,8 @@ SetWorkingDir %A_ScriptDir%
 ; グローバル設定値（Microsoft IME用デフォルト値）
 ; ============================================================
 global SLEEP_IME_ACTIVATE := 300      ; IME起動待ち
-global SLEEP_AFTER_INPUT := 500       ; 入力後待ち（400→500に増加）
+global SLEEP_BASE_INPUT := 300        ; 基本入力待ち時間
+global SLEEP_PER_CHAR := 50           ; 1文字あたりの追加待ち時間（ミリ秒）
 global SLEEP_AFTER_CONVERT := 500     ; 変換後待ち（最重要）
 global SLEEP_AFTER_CONFIRM := 200     ; 確定後待ち
 global SLEEP_CLIPBOARD := 150         ; クリップボード待ち
@@ -26,8 +27,6 @@ global KEY_PRESS_DURATION := 10       ; 各キーの押下時間（ミリ秒）
 global notepadHwnd := 0
 
 ; コマンドライン引数から待ち時間を設定（オプション）
-; 使用例: AutoHotkey.exe kanakanji.ahk 700
-; これで SLEEP_AFTER_CONVERT を 700ms に上書き
 if (A_Args.Length() >= 1 && A_Args[1] != "")
 {
     customSleep := A_Args[1]
@@ -102,19 +101,19 @@ PrepareNotepad()
 }
 
 ; ============================================================
-; IMEで変換する関数（入力速度を抑制）
+; IMEで変換する関数（入力完了を確実に待つ）
 ; ============================================================
 ConvertWithIME(text)
 {
     global notepadHwnd
-    global SLEEP_IME_ACTIVATE, SLEEP_AFTER_INPUT, SLEEP_AFTER_CONVERT
-    global SLEEP_AFTER_CONFIRM, SLEEP_CLIPBOARD, CLIPBOARD_TIMEOUT
+    global SLEEP_IME_ACTIVATE, SLEEP_BASE_INPUT, SLEEP_PER_CHAR
+    global SLEEP_AFTER_CONVERT, SLEEP_AFTER_CONFIRM
+    global SLEEP_CLIPBOARD, CLIPBOARD_TIMEOUT
     global KEY_DELAY, KEY_PRESS_DURATION
     
     ; ウィンドウの存在確認
     if !WinExist("ahk_id " . notepadHwnd)
     {
-        ; ウィンドウが閉じられた場合は再準備
         PrepareNotepad()
     }
     
@@ -133,27 +132,47 @@ ConvertWithIME(text)
     Sleep, %SLEEP_IME_ACTIVATE%
     
     ; ② ひらがなを入力（速度を抑制）
-    ; SendInputではなくSendを使用し、キーストローク間に遅延を設定
     SetKeyDelay, %KEY_DELAY%, %KEY_PRESS_DURATION%
-    SendMode Event  ; より確実な送信モード
+    SendMode Event
     
     Send, %text%
     
-    ; SendModeを元に戻す
     SendMode Input
     
-    ; 入力完了を十分待つ
-    Sleep, %SLEEP_AFTER_INPUT%
+    ; ③ 入力完了を待つ（文字数に応じた動的な待ち時間）
+    textLength := StrLen(text)
+    dynamicSleep := SLEEP_BASE_INPUT + (textLength * SLEEP_PER_CHAR)
     
-    ; ③ スペースキーで変換（第一候補）
+    ; 最低でも800ms、最大3000msの範囲で待つ
+    if (dynamicSleep < 800)
+        dynamicSleep := 800
+    if (dynamicSleep > 3000)
+        dynamicSleep := 3000
+    
+    Sleep, %dynamicSleep%
+    
+    ; ④ IMEの状態を確認（未確定文字列があるか）
+    ; IMEが入力を認識しているか追加で確認
+    imeState := IME_GET("ahk_id " . notepadHwnd)
+    if (imeState = 0)
+    {
+        ; IMEがオフになっている場合は再度オンにする
+        IME_SET(1, "ahk_id " . notepadHwnd)
+        Sleep, 200
+    }
+    
+    ; さらに安全のため追加待機
+    Sleep, 200
+    
+    ; ⑤ スペースキーで変換（第一候補）
     Send, {Space}
     Sleep, %SLEEP_AFTER_CONVERT%
     
-    ; ④ Enterで確定
+    ; ⑥ Enterで確定
     Send, {Enter}
     Sleep, %SLEEP_AFTER_CONFIRM%
     
-    ; ⑤ 結果をクリップボードにコピー
+    ; ⑦ 結果をクリップボードにコピー
     Clipboard := ""
     Send, ^a
     Sleep, 100
