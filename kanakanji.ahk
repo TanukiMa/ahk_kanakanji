@@ -13,7 +13,7 @@ SetWorkingDir %A_ScriptDir%
 ; グローバル設定値（Microsoft IME用デフォルト値）
 ; ============================================================
 global SLEEP_IME_ACTIVATE := 300      ; IME起動待ち
-global SLEEP_AFTER_INPUT := 400       ; 入力後待ち
+global SLEEP_AFTER_INPUT := 2000       ; 入力後待ち
 global SLEEP_AFTER_CONVERT := 500     ; 変換後待ち（最重要）
 global SLEEP_AFTER_CONFIRM := 200     ; 確定後待ち
 global SLEEP_CLIPBOARD := 150         ; クリップボード待ち
