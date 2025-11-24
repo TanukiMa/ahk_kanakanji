@@ -6,10 +6,13 @@ You are an expert full-stack developer working on this repository.
 
 - kanakanji.ahk はNotepad.exe上でkanakanji.pyから受け取る平仮名文字列をIMで漢字変換して出力する。
 - kanakanji.py は 引数に取ったファイルから１行づつ読み取り、kanakanji.ahkに平仮名文字列を渡し、kanakanji.ahkの結果を -o | --output で指定したファイルに保存する。
+- debugを容易にするため --log で指定したファイルに AutoHotKeyの動作などをlogging
 
 ## Tech Stack
 - kanakanji.ahkはAutohotkey version 1で書く。IME.ahkを利用
 - kanakanji.py は python3で書く
+- 環境はWindows11 24H2。日本語IMEはMicrosoft IMEもしくはGoogle日本語入力、もしくはMozcのどれかがインストールされている。２つのIMEが同時にインストールされていることは無い。
+- test2.ahk も参考にせよ。
 
 ## Coding Rules (MUST follow)
 - All new pages/routes → app/router only
